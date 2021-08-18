@@ -387,16 +387,6 @@ void ApplePS2Elan::setParamPropertiesGated(OSDictionary *config) {
     }
 }
 
-IOReturn ApplePS2Elan::setParamProperties(OSDictionary *dict) {
-    if (_cmdGate) {
-        // syncronize through workloop...
-        //_cmdGate->runAction(OSMemberFunctionCast(IOCommandGate::Action, this, &ApplePS2Elan::setParamPropertiesGated), dict);
-        setParamPropertiesGated(dict);
-    }
-
-    return kIOReturnSuccess;
-}
-
 IOReturn ApplePS2Elan::setProperties(OSObject *props) {
     OSDictionary *dict = OSDynamicCast(OSDictionary, props);
     if (dict && _cmdGate) {

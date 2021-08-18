@@ -418,7 +418,6 @@ public:
     bool start( IOService * provider ) override;
     void stop( IOService * provider ) override;
 
-    IOReturn setParamProperties(OSDictionary * dict);
 	IOReturn setProperties(OSObject *props) override;
     
     IOReturn message(UInt32 type, IOService* provider, void* argument) override;
