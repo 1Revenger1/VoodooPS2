@@ -33,13 +33,7 @@
 // ApplePS2Elan Class Implementation
 //
 
-OSDefineMetaClassAndStructors(ApplePS2Elan, IOHIPointing);
-
-UInt32 ApplePS2Elan::deviceType()
-{ return NX_EVS_DEVICE_TYPE_MOUSE; };
-
-UInt32 ApplePS2Elan::interfaceID()
-{ return NX_EVS_DEVICE_INTERFACE_BUS_ACE; };
+OSDefineMetaClassAndStructors(ApplePS2Elan, IOService);
 
 bool ApplePS2Elan::init(OSDictionary *dict) {
     // Initialize this object's minimal state. This is invoked right after this
@@ -230,18 +224,6 @@ bool ApplePS2Elan::start(IOService *provider) {
     }
 #endif
 
-    // Advertise the current state of the tapping feature.
-    //
-    // Must add this property to let our superclass know that it should handle
-    // trackpad acceleration settings from user space.  Without this, tracking
-    // speed adjustments from the mouse prefs panel have no effect.
-    setProperty(kIOHIDPointerAccelerationTypeKey, kIOHIDTrackpadAccelerationType);
-    setProperty(kIOHIDScrollAccelerationTypeKey, kIOHIDTrackpadScrollAccelerationKey);
-    setProperty(kIOHIDScrollResolutionKey, _scrollresolution << 16, 32);
-    // added for Sierra precise scrolling (credit @usr-sse2)
-    setProperty("HIDScrollResolutionX", _scrollresolution << 16, 32);
-    setProperty("HIDScrollResolutionY", _scrollresolution << 16, 32);
-
     // Setup workloop with command gate for thread syncronization...
     IOWorkLoop *pWorkLoop = getWorkLoop();
     _cmdGate = IOCommandGate::commandGate(this);
@@ -412,7 +394,7 @@ IOReturn ApplePS2Elan::setParamProperties(OSDictionary *dict) {
         setParamPropertiesGated(dict);
     }
 
-    return super::setParamProperties(dict);
+    return kIOReturnSuccess;
 }
 
 IOReturn ApplePS2Elan::setProperties(OSObject *props) {
@@ -1048,6 +1030,10 @@ int ApplePS2Elan::elantechSetInputParams() {
     setProperty(VOODOO_INPUT_PHYSICAL_MAX_Y_KEY, (info.y_max - info.y_min + 1) * 100 / info.y_res, 32);
 
     setProperty(VOODOO_INPUT_TRANSFORM_KEY, 0ull, 32);
+    
+    // Trackpoint properties
+    setProperty(VOODOO_INPUT_SCROLL_RESOLUTION_KEY, _scrollresolution, 32);
+    
     setProperty("VoodooInputSupported", kOSBooleanTrue);
     registerService();
 
@@ -2238,4 +2224,22 @@ void ApplePS2Elan::resetMouse() {
 
 void ApplePS2Elan::setTouchPadEnable(bool enable) {
     ps2_command<0>(NULL, enable ? kDP_Enable : kDP_SetDefaultsAndDisable);
+}
+
+void ApplePS2Elan::dispatchRelativePointerEvent(int dx, int dy, UInt32 buttonState, uint64_t now)
+{
+    relativeEvent.buttons = buttonState;
+    relativeEvent.dx = dx;
+    relativeEvent.dy = dy;
+    relativeEvent.timestamp = now;
+    messageClient(kIOMessageVoodooTrackpointRelativePointer, voodooInputInstance, &relativeEvent);
+}
+
+void ApplePS2Elan::dispatchScrollWheelEvent(short deltaAxis1, short deltaAxis2, short deltaAxis3, uint64_t now)
+{
+    scrollEvent.deltaAxis1 = deltaAxis1;
+    scrollEvent.deltaAxis2 = deltaAxis2;
+    scrollEvent.deltaAxis3 = deltaAxis3;
+    scrollEvent.timestamp = now;
+    messageClient(kIOMessageVoodooTrackpointScrollWheel, voodooInputInstance, &scrollEvent);
 }

@@ -209,8 +209,8 @@ struct elantech_data {
 // ApplePS2Elan Class Declaration
 //
 
-class EXPORT ApplePS2Elan : public IOHIPointing {
-    typedef IOHIPointing super;
+class EXPORT ApplePS2Elan : public IOService {
+    typedef IOService super;
     OSDeclareDefaultStructors(ApplePS2Elan);
 
 private:
@@ -225,6 +225,8 @@ private:
     IOCommandGate*        _cmdGate {nullptr};
 
     VoodooInputEvent inputEvent {};
+    ScrollWheelEvent scrollEvent {};
+    RelativePointerEvent relativeEvent {};
 
     // when trackpad has physical button
     UInt32 leftButton = 0;
@@ -290,7 +292,10 @@ private:
 
     void notificationHIDAttachedHandlerGated(IOService *newService, IONotifier *notifier);
     bool notificationHIDAttachedHandler(void *refCon, IOService *newService, IONotifier *notifier);
-
+    
+    void dispatchRelativePointerEvent(int dx, int dy, UInt32 buttonState, uint64_t now);
+    void dispatchScrollWheelEvent(short deltaAxis1, short deltaAxis2, short deltaAxis3, uint64_t now);
+    
     elantech_data etd {};
     elantech_device_info info {};
     int elantechDetect();
@@ -343,10 +348,7 @@ public:
     bool start(IOService *provider) override;
     void stop(IOService *provider) override;
 
-    UInt32 deviceType() override;
-    UInt32 interfaceID() override;
-
-    IOReturn setParamProperties(OSDictionary* dict) override;
+    IOReturn setParamProperties(OSDictionary* dict);
     IOReturn setProperties(OSObject *props) override;
 
     IOReturn message(UInt32 type, IOService* provider, void* argument) override;

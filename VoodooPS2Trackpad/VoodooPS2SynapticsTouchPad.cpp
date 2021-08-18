@@ -54,16 +54,7 @@
 // ApplePS2SynapticsTouchPad Class Implementation
 //
 
-OSDefineMetaClassAndStructors(ApplePS2SynapticsTouchPad, IOHIPointing);
-
-UInt32 ApplePS2SynapticsTouchPad::deviceType()
-{ return NX_EVS_DEVICE_TYPE_MOUSE; };
-
-UInt32 ApplePS2SynapticsTouchPad::interfaceID()
-{ return NX_EVS_DEVICE_INTERFACE_BUS_ACE; };
-
-IOItemCount ApplePS2SynapticsTouchPad::buttonCount() { return _buttonCount; };
-IOFixed     ApplePS2SynapticsTouchPad::resolution()  { return _resolution << 16; };
+OSDefineMetaClassAndStructors(ApplePS2SynapticsTouchPad, IOService);
 
 #define abs(x) ((x) < 0 ? -(x) : (x))
 
@@ -459,6 +450,12 @@ void ApplePS2SynapticsTouchPad::queryCapabilities()
     setProperty(VOODOO_INPUT_PHYSICAL_MAX_Y_KEY, physical_max_y, 32);
 
     setProperty(VOODOO_INPUT_TRANSFORM_KEY, 0ull, 32);
+    
+    // Trackpoint properties
+    setProperty(VOODOO_INPUT_BUTTON_COUNT_KEY, _buttonCount, 32);
+    setProperty(VOODOO_INPUT_RESOLUTION_KEY, _resolution, 32);
+    setProperty(VOODOO_INPUT_SCROLL_RESOLUTION_KEY, _scrollresolution, 32);
+    
     setProperty("VoodooInputSupported", kOSBooleanTrue);
 
     // Helpful information for SMBus drivers
@@ -480,8 +477,6 @@ bool ApplePS2SynapticsTouchPad::handleOpen(IOService *forClient, IOOptionBits op
     if (forClient && forClient->getProperty(VOODOO_INPUT_IDENTIFIER)) {
         voodooInputInstance = forClient;
         voodooInputInstance->retain();
-
-        return true;
     }
 
     return super::handleOpen(forClient, options, arg);
@@ -518,21 +513,6 @@ bool ApplePS2SynapticsTouchPad::start( IOService * provider )
     char buf[128];
     snprintf(buf, sizeof(buf), "type 0x%02x, version %d.%d", _touchPadType, (UInt8)(_touchPadVersion >> 8), (UInt8)(_touchPadVersion));
     setProperty("RM,TrackpadInfo", buf);
-
-    //
-    // Advertise the current state of the tapping feature.
-    //
-    // Must add this property to let our superclass know that it should handle
-    // trackpad acceleration settings from user space.  Without this, tracking
-    // speed adjustments from the mouse prefs panel have no effect.
-    //
-
-    setProperty(kIOHIDPointerAccelerationTypeKey, kIOHIDTrackpadAccelerationType);
-    setProperty(kIOHIDScrollAccelerationTypeKey, kIOHIDTrackpadScrollAccelerationKey);
-	setProperty(kIOHIDScrollResolutionKey, _scrollresolution << 16, 32);
-    // added for Sierra precise scrolling (credit usr-sse2)
-    setProperty("HIDScrollResolutionX", _scrollresolution << 16, 32);
-    setProperty("HIDScrollResolutionY", _scrollresolution << 16, 32);
     
     //
     // Setup workloop with command gate for thread syncronization...
@@ -1763,7 +1743,7 @@ UInt32 ApplePS2SynapticsTouchPad::middleButton(UInt32 buttons, uint64_t now_abs,
             else if (timeout || buttons != _pendingbuttons)
             {
                 if (fromTimer == from || !(buttons & _pendingbuttons))
-                    dispatchRelativePointerEventX(0, 0, buttons|_pendingbuttons, now_abs);
+                    dispatchRelativePointerEvent(0, 0, buttons|_pendingbuttons, now_abs);
                 _pendingbuttons = 0;
                 cancelTimer(_buttonTimer);
                 if (0x0 == buttons)
@@ -1798,7 +1778,7 @@ UInt32 ApplePS2SynapticsTouchPad::middleButton(UInt32 buttons, uint64_t now_abs,
             else if (timeout || buttons != _pendingbuttons)
             {
                 if (fromTimer == from)
-                    dispatchRelativePointerEventX(0, 0, buttons|_pendingbuttons, now_abs);
+                    dispatchRelativePointerEvent(0, 0, buttons|_pendingbuttons, now_abs);
                 _pendingbuttons = 0;
                 cancelTimer(_buttonTimer);
                 if (0x0 == buttons)
@@ -2314,7 +2294,7 @@ IOReturn ApplePS2SynapticsTouchPad::setParamProperties(OSDictionary* dict)
         setParamPropertiesGated(dict);
     }
     
-    return super::setParamProperties(dict);
+    return kIOReturnSuccess;
     ////return result;
 }
 
@@ -2747,3 +2727,20 @@ bool ApplePS2SynapticsTouchPad::notificationHIDAttachedHandler(void * refCon,
     return true;
 }
 
+void ApplePS2SynapticsTouchPad::dispatchRelativePointerEvent(int dx, int dy, UInt32 buttonState, uint64_t now)
+{
+    relativeEvent.buttons = buttonState;
+    relativeEvent.dx = dx;
+    relativeEvent.dy = dy;
+    relativeEvent.timestamp = now;
+    messageClient(kIOMessageVoodooTrackpointRelativePointer, voodooInputInstance, &relativeEvent);
+}
+
+void ApplePS2SynapticsTouchPad::dispatchScrollWheelEvent(short deltaAxis1, short deltaAxis2, short deltaAxis3, uint64_t now)
+{
+    scrollEvent.deltaAxis1 = deltaAxis1;
+    scrollEvent.deltaAxis2 = deltaAxis2;
+    scrollEvent.deltaAxis3 = deltaAxis3;
+    scrollEvent.timestamp = now;
+    messageClient(kIOMessageVoodooTrackpointScrollWheel, voodooInputInstance, &scrollEvent);
+}

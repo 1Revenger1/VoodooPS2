@@ -202,9 +202,9 @@ struct virtual_finger_state {
 
 #define kPacketLength 6
 
-class EXPORT ApplePS2SynapticsTouchPad : public IOHIPointing
+class EXPORT ApplePS2SynapticsTouchPad : public IOService
 {
-    typedef IOHIPointing super;
+    typedef IOService super;
 	OSDeclareDefaultStructors(ApplePS2SynapticsTouchPad);
 
 private:
@@ -224,6 +224,8 @@ private:
     IOACPIPlatformDevice*_provider {nullptr};
     
 	VoodooInputEvent inputEvent {};
+    ScrollWheelEvent scrollEvent {};
+    RelativePointerEvent relativeEvent {};
     
     // buttons and scroll wheel
     bool left {false};
@@ -401,12 +403,9 @@ private:
     void notificationHIDAttachedHandlerGated(IOService * newService, IONotifier * notifier);
     bool notificationHIDAttachedHandler(void * refCon, IOService * newService, IONotifier * notifier);
 protected:
-	IOItemCount buttonCount() override;
-	IOFixed     resolution() override;
-    inline void dispatchRelativePointerEventX(int dx, int dy, UInt32 buttonState, uint64_t now)
-        { dispatchRelativePointerEvent(dx, dy, buttonState, *(AbsoluteTime*)&now); }
-    inline void dispatchScrollWheelEventX(short deltaAxis1, short deltaAxis2, short deltaAxis3, uint64_t now)
-        { dispatchScrollWheelEvent(deltaAxis1, deltaAxis2, deltaAxis3, *(AbsoluteTime*)&now); }
+    void dispatchRelativePointerEvent(int dx, int dy, UInt32 buttonState, uint64_t now);
+    void dispatchScrollWheelEvent(short deltaAxis1, short deltaAxis2, short deltaAxis3, uint64_t now);
+    
     inline void setTimerTimeout(IOTimerEventSource* timer, uint64_t time)
         { timer->setTimeout(*(AbsoluteTime*)&time); }
     inline void cancelTimer(IOTimerEventSource* timer)
@@ -418,11 +417,8 @@ public:
                                                SInt32 *    score ) override;
     bool start( IOService * provider ) override;
     void stop( IOService * provider ) override;
-    
-    UInt32 deviceType() override;
-    UInt32 interfaceID() override;
 
-	IOReturn setParamProperties(OSDictionary * dict) override;
+    IOReturn setParamProperties(OSDictionary * dict);
 	IOReturn setProperties(OSObject *props) override;
     
     IOReturn message(UInt32 type, IOService* provider, void* argument) override;
