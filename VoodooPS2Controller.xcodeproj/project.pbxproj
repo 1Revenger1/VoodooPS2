@@ -131,6 +131,7 @@
 		EDD95559208E2B640031D99E /* SSDT-Thinkpad_Clickpad.dsl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SSDT-Thinkpad_Clickpad.dsl"; sourceTree = "<group>"; };
 		EDD9555A208E2E7A0031D99E /* SSDT-Thinkpad_Trackpad.dsl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SSDT-Thinkpad_Trackpad.dsl"; sourceTree = "<group>"; };
 		EDD970FD1FD0B826004CCFFD /* SSDT-HP-FixLidSleep.dsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "SSDT-HP-FixLidSleep.dsl"; sourceTree = "<group>"; };
+		EEAA650B2A0EBE3B005B09DE /* SSDT-ChromebookKeys.dsl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SSDT-ChromebookKeys.dsl"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -329,6 +330,7 @@
 				EDAD29471FE8772400A93537 /* SSDT-Swap-LeftControlCommand.dsl */,
 				EDD95559208E2B640031D99E /* SSDT-Thinkpad_Clickpad.dsl */,
 				EDD9555A208E2E7A0031D99E /* SSDT-Thinkpad_Trackpad.dsl */,
+				EEAA650B2A0EBE3B005B09DE /* SSDT-ChromebookKeys.dsl */,
 			);
 			path = ACPI;
 			sourceTree = "<group>";

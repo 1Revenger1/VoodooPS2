@@ -107,9 +107,13 @@ private:
     UInt32                      _maxsleeppresstime;
 
     // ACPI support for keyboard backlight
-    IOACPIPlatformDevice *      _provider;
-    int *                       _backlightLevels;
-    int                         _backlightCount;
+    char *                _backlightACPIPath {nullptr};
+    char *                _backlightACPIGetMethod {nullptr};
+    char *                _backlightACPISetMethod {nullptr};
+    char *                _backlightACPIQueryLevelsMethod {nullptr};
+    IOACPIPlatformDevice *      _backlightService {nullptr};
+    int *                       _backlightLevels {nullptr};
+    int                         _backlightCount {0};
     
     // special hack for Envy brightness access, while retaining F2/F3 functionality
     bool                        _brightnessHack;

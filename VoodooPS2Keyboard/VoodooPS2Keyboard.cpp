@@ -60,6 +60,12 @@
 #define kUseISOLayoutKeyboard               "Use ISO layout keyboard"
 #define kLogScanCodes                       "LogScanCodes"
 
+// Default = "IOService:/AppleACPIPlatformExpert/PS2K"
+#define kKbdBacklightACPIPath               "Keyboard Backlight ACPI Path"
+#define kKbdBacklightACPIGet                "Get Keyboard Backlight Level"
+#define kKbdBacklightACPISet                "Set Keyboard Backlight Level"
+#define kKbdBacklightACPIQueryAll           "Query All Keyboard Backlight Levels"
+
 #define kBrightnessHack                     "BrightnessHack"
 #define kMacroInversion                     "Macro Inversion"
 #define kMacroTranslation                   "Macro Translation"
@@ -178,10 +184,6 @@ bool ApplePS2Keyboard::init(OSDictionary * dict)
     _keysStandard = 0;
     _keysSpecial = 0;
     _f12ejectdelay = 250;   // default is 250 ms
-
-    // initialize ACPI support for keyboard backlight
-    _provider = 0;
-    _backlightLevels = 0;
     
     _logscancodes = 0;
     _brightnessHack = false;
@@ -344,7 +346,6 @@ bool ApplePS2Keyboard::start(IOService * provider)
 
     setProperty(kDeliverNotifications, kOSBooleanTrue);
 
-    setProperty(kDeliverNotifications, kOSBooleanTrue);
     //
     // The driver has been instructed to start.   This is called after a
     // successful attach.
@@ -381,26 +382,34 @@ bool ApplePS2Keyboard::start(IOService * provider)
         return false;
     }
     
-    // get IOACPIPlatformDevice for Device (PS2K)
-    //REVIEW: should really look at the parent chain for IOACPIPlatformDevice instead.
-    _provider = (IOACPIPlatformDevice*)IORegistryEntry::fromPath("IOService:/AppleACPIPlatformExpert/PS2K");
-
+    // get IOACPIPlatformDevice for Keyboard backlight
+    IORegistryEntry *backlightEntry = IORegistryEntry::fromPath(_backlightACPIPath);
+    _backlightService = OSDynamicCast(IOACPIPlatformDevice, backlightEntry);
+    if (_backlightService == nullptr) {
+        OSSafeReleaseNULL(backlightEntry);
+    }
+    
     //
     // get keyboard backlight levels for ACPI based backlight keys
     //
     
     OSObject* result = 0;
-    if (_provider) do
+    if (_backlightService) do
     {
         // check for brightness methods
-        if (kIOReturnSuccess != _provider->validateObject("KKCL") || kIOReturnSuccess != _provider->validateObject("KKCM") || kIOReturnSuccess != _provider->validateObject("KKQC"))
+        // KKCL = Query Levels
+        // KKCM = Set Level
+        // KKQC = Get Level
+        if (kIOReturnSuccess != _backlightService->validateObject(_backlightACPIQueryLevelsMethod) ||
+            kIOReturnSuccess != _backlightService->validateObject(_backlightACPIGetMethod) ||
+            kIOReturnSuccess != _backlightService->validateObject(_backlightACPISetMethod))
         {
-            DEBUG_LOG("ps2bl: KKCL, KKCM, KKQC methods not found in DSDT\n");
+            DEBUG_LOG("ps2bl: keyboard backlight methods not found in DSDT\n");
             break;
         }
         
         // methods are there, so now try to collect brightness levels
-        if (kIOReturnSuccess != _provider->evaluateObject("KKCL", &result))
+        if (kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPIQueryLevelsMethod, &result))
         {
             DEBUG_LOG("ps2bl: KKCL returned error\n");
             break;
@@ -670,6 +679,13 @@ void ApplePS2Keyboard::setParamPropertiesGated(OSDictionary * dict)
     if (NULL == dict)
         return;
     
+    const struct { const char *name; char **var; } stringProps[] {
+        { kKbdBacklightACPIPath, &_backlightACPIPath },
+        { kKbdBacklightACPIQueryAll, &_backlightACPIQueryLevelsMethod },
+        { kKbdBacklightACPIGet, &_backlightACPIGetMethod },
+        { kKbdBacklightACPISet, &_backlightACPISetMethod }
+    };
+    
 //REVIEW: this code needs cleanup (should be table driven like mouse/trackpad)
 
     // get time before sleep button takes effect
@@ -689,6 +705,19 @@ void ApplePS2Keyboard::setParamPropertiesGated(OSDictionary * dict)
     {
         _macroMaxTime = num->unsigned64BitValue();
         setProperty(kMaxMacroTime, _macroMaxTime, 64);
+    }
+    
+    for (size_t i = 0; i < countof(stringProps); i++) {
+        if (OSString *str = OSDynamicCast(OSString, dict->getObject(stringProps[i].name))) {
+            char **var = stringProps[i].var;
+            size_t length = str->getLength();
+            
+            if (*var != nullptr) delete *var;
+            
+            // + 1 to grab null terminator
+            *var = new char[length + 1];
+            memcpy(*var, str->getCStringNoCopy(), length + 1);
+        }
     }
     
     if (_fkeymodesupported)
@@ -926,7 +955,7 @@ void ApplePS2Keyboard::stop(IOService * provider)
     //
     // Release ACPI provider for PS2K ACPI device
     //
-    OSSafeReleaseNULL(_provider);
+    OSSafeReleaseNULL(_backlightService);
 
     //
     // Release data related to keyboard backlight
@@ -936,6 +965,12 @@ void ApplePS2Keyboard::stop(IOService * provider)
         delete[] _backlightLevels;
         _backlightLevels = 0;
     }
+    
+    if (_backlightACPIPath) delete[] _backlightACPIPath;
+    if (_backlightACPIGetMethod) delete[] _backlightACPIGetMethod;
+    if (_backlightACPISetMethod) delete[] _backlightACPISetMethod;
+    if (_backlightACPIQueryLevelsMethod) delete[] _backlightACPIQueryLevelsMethod;
+    
 
     OSSafeReleaseNULL(_keysStandard);
     OSSafeReleaseNULL(_keysSpecial);
@@ -1327,12 +1362,12 @@ void ApplePS2Keyboard::dispatchInvertBuffer()
 
 void ApplePS2Keyboard::modifyKeyboardBacklight(int keyCode, bool goingDown)
 {
-    assert(_provider);
+    assert(_backlightService);
     assert(_backlightLevels);
     
     // get current brightness level
     UInt32 result;
-    if (kIOReturnSuccess != _provider->evaluateInteger("KKQC", &result))
+    if (kIOReturnSuccess != _backlightService->evaluateInteger(_backlightACPIGetMethod, &result))
     {
         DEBUG_LOG("ps2bl: KKQC returned error\n");
         return;
@@ -1352,7 +1387,7 @@ void ApplePS2Keyboard::modifyKeyboardBacklight(int keyCode, bool goingDown)
         ++index;
     }
     // move to next or previous
-    index += (keyCode == 0x4e ? +1 : -1);
+    index += (keyCode == 0x2F ? +1 : -1);
     if (index >= _backlightCount)
         index = _backlightCount - 1;
     if (index < 0)
@@ -1367,7 +1402,7 @@ void ApplePS2Keyboard::modifyKeyboardBacklight(int keyCode, bool goingDown)
         DEBUG_LOG("ps2bl: OSNumber::withNumber failed\n");
         return;
     }
-    if (goingDown && kIOReturnSuccess != _provider->evaluateObject("KKCM", NULL, (OSObject**)&num, 1))
+    if (goingDown && kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPISetMethod, NULL, (OSObject**)&num, 1))
     {
         DEBUG_LOG("ps2bl: KKCM returned error\n");
     }
@@ -1475,7 +1510,7 @@ bool ApplePS2Keyboard::dispatchKeyboardEventWithPacket(const UInt8* packet)
     }
 
     // codes e0f0 through e0ff can be used to call back into ACPI methods on this device
-    if (keyCode >= 0x01f0 && keyCode <= 0x01ff && _provider != NULL)
+    if (keyCode >= 0x01f0 && keyCode <= 0x01ff && _backlightService != NULL)
     {
         // evaluate RKA[0-F] for these keys
         char method[5] = "RKAx";
@@ -1484,7 +1519,7 @@ bool ApplePS2Keyboard::dispatchKeyboardEventWithPacket(const UInt8* packet)
         if (OSNumber* num = OSNumber::withNumber(goingDown, 32))
         {
             // call ACPI RKAx(Arg0=goingDown)
-            _provider->evaluateObject(method, NULL, (OSObject**)&num, 1);
+            _backlightService->evaluateObject(method, NULL, (OSObject**)&num, 1);
             num->release();
         }
     }
@@ -1502,8 +1537,8 @@ bool ApplePS2Keyboard::dispatchKeyboardEventWithPacket(const UInt8* packet)
                 return false;
             break;
             
-        case 0x4e:  // Numpad+
-        case 0x4a:  // Numpad-
+        case 0x2B:  // Numpad+
+        case 0x2F:  // Numpad-
             if (_backlightLevels && checkModifierState(kMaskLeftControl|kMaskLeftAlt))
             {
                 // Ctrl+Alt+Numpad(+/-) => use to manipulate keyboard backlight
