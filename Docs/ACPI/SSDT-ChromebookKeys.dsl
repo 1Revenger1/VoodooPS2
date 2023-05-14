@@ -14,6 +14,7 @@ DefinitionBlock ("", "SSDT", 2, "ACDT", "Chromebook", 0)
     
     Scope (BACKLIGHT_DEVICE)
     {
+        // TODO: Maybe embed this into VoodooPS2 as a defalut set of backlight levels?
         Method (KBQL, 0, NotSerialized) {
             Return(Package(11)
             {
@@ -36,7 +37,7 @@ DefinitionBlock ("", "SSDT", 2, "ACDT", "Chromebook", 0)
     {
         "Keyboard", Package()
         {
-            "Keyboard Backlight ACPI Path", TO_STR(BACKLIGHT_DEVICE),
+            "Keyboard Backlight ACPI Path", "IOACPIPlane:/_SB/KBLT",
             "Query All Keyboard Backlight Levels", "KBQL",
             "Get Keyboard Backlight Level", "KBQC",
             "Set Keyboard Backlight Level", "KBCM",
