@@ -398,6 +398,11 @@ bool ApplePS2Keyboard::start(IOService * provider)
     OSObject* result = 0;
     if (_backlightService) do
     {
+        if (_backlightACPIGetMethod == nullptr || _backlightACPISetMethod == nullptr || _backlightACPIQueryLevelsMethod == nullptr) {
+            IOLog("ps2bl: ACPI methods not filled in!\n");
+            break;
+        }
+        
         // check for brightness methods
         if (kIOReturnSuccess != _backlightService->validateObject(_backlightACPIQueryLevelsMethod->getCStringNoCopy()) ||
             kIOReturnSuccess != _backlightService->validateObject(_backlightACPIGetMethod->getCStringNoCopy()) ||
@@ -708,7 +713,7 @@ void ApplePS2Keyboard::setParamPropertiesGated(OSDictionary * dict)
     
     for (size_t i = 0; i < countof(stringProps); i++) {
         if (OSString *str = OSDynamicCast(OSString, dict->getObject(stringProps[i].name))) {
-            *stringProps[i].var = str;
+            *(stringProps[i].var) = str;
             str->retain();
             setProperty(stringProps[i].name, str);
         }
