@@ -383,10 +383,12 @@ bool ApplePS2Keyboard::start(IOService * provider)
     }
     
     // get IOACPIPlatformDevice for Keyboard backlight
-    IORegistryEntry *backlightEntry = IORegistryEntry::fromPath(_backlightACPIPath);
-    _backlightService = OSDynamicCast(IOACPIPlatformDevice, backlightEntry);
-    if (_backlightService == nullptr) {
-        OSSafeReleaseNULL(backlightEntry);
+    if (_backlightACPIPath != nullptr) {
+        IORegistryEntry *backlightEntry = IORegistryEntry::fromPath(_backlightACPIPath->getCStringNoCopy());
+        _backlightService = OSDynamicCast(IOACPIPlatformDevice, backlightEntry);
+        if (_backlightService == nullptr) {
+            OSSafeReleaseNULL(backlightEntry);
+        }
     }
     
     //
@@ -397,19 +399,16 @@ bool ApplePS2Keyboard::start(IOService * provider)
     if (_backlightService) do
     {
         // check for brightness methods
-        // KKCL = Query Levels
-        // KKCM = Set Level
-        // KKQC = Get Level
-        if (kIOReturnSuccess != _backlightService->validateObject(_backlightACPIQueryLevelsMethod) ||
-            kIOReturnSuccess != _backlightService->validateObject(_backlightACPIGetMethod) ||
-            kIOReturnSuccess != _backlightService->validateObject(_backlightACPISetMethod))
+        if (kIOReturnSuccess != _backlightService->validateObject(_backlightACPIQueryLevelsMethod->getCStringNoCopy()) ||
+            kIOReturnSuccess != _backlightService->validateObject(_backlightACPIGetMethod->getCStringNoCopy()) ||
+            kIOReturnSuccess != _backlightService->validateObject(_backlightACPISetMethod->getCStringNoCopy()))
         {
             DEBUG_LOG("ps2bl: keyboard backlight methods not found in DSDT\n");
             break;
         }
         
         // methods are there, so now try to collect brightness levels
-        if (kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPIQueryLevelsMethod, &result))
+        if (kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPIQueryLevelsMethod->getCStringNoCopy(), &result))
         {
             DEBUG_LOG("ps2bl: KKCL returned error\n");
             break;
@@ -679,7 +678,7 @@ void ApplePS2Keyboard::setParamPropertiesGated(OSDictionary * dict)
     if (NULL == dict)
         return;
     
-    const struct { const char *name; char **var; } stringProps[] {
+    const struct { const char *name; OSString **var; } stringProps[] {
         { kKbdBacklightACPIPath, &_backlightACPIPath },
         { kKbdBacklightACPIQueryAll, &_backlightACPIQueryLevelsMethod },
         { kKbdBacklightACPIGet, &_backlightACPIGetMethod },
@@ -709,14 +708,9 @@ void ApplePS2Keyboard::setParamPropertiesGated(OSDictionary * dict)
     
     for (size_t i = 0; i < countof(stringProps); i++) {
         if (OSString *str = OSDynamicCast(OSString, dict->getObject(stringProps[i].name))) {
-            char **var = stringProps[i].var;
-            size_t length = str->getLength();
-            
-            if (*var != nullptr) delete *var;
-            
-            // + 1 to grab null terminator
-            *var = new char[length + 1];
-            memcpy(*var, str->getCStringNoCopy(), length + 1);
+            *stringProps[i].var = str;
+            str->retain();
+            setProperty(stringProps[i].name, str);
         }
     }
     
@@ -966,11 +960,10 @@ void ApplePS2Keyboard::stop(IOService * provider)
         _backlightLevels = 0;
     }
     
-    if (_backlightACPIPath) delete[] _backlightACPIPath;
-    if (_backlightACPIGetMethod) delete[] _backlightACPIGetMethod;
-    if (_backlightACPISetMethod) delete[] _backlightACPISetMethod;
-    if (_backlightACPIQueryLevelsMethod) delete[] _backlightACPIQueryLevelsMethod;
-    
+    OSSafeReleaseNULL(_backlightACPIPath);
+    OSSafeReleaseNULL(_backlightACPIGetMethod);
+    OSSafeReleaseNULL(_backlightACPISetMethod);
+    OSSafeReleaseNULL(_backlightACPIQueryLevelsMethod);
 
     OSSafeReleaseNULL(_keysStandard);
     OSSafeReleaseNULL(_keysSpecial);
@@ -1364,10 +1357,12 @@ void ApplePS2Keyboard::modifyKeyboardBacklight(int keyCode, bool goingDown)
 {
     assert(_backlightService);
     assert(_backlightLevels);
+    assert(_backlightACPIGetMethod);
+    assert(_backlightACPISetMethod);
     
     // get current brightness level
     UInt32 result;
-    if (kIOReturnSuccess != _backlightService->evaluateInteger(_backlightACPIGetMethod, &result))
+    if (kIOReturnSuccess != _backlightService->evaluateInteger(_backlightACPIGetMethod->getCStringNoCopy(), &result))
     {
         DEBUG_LOG("ps2bl: KKQC returned error\n");
         return;
@@ -1402,7 +1397,7 @@ void ApplePS2Keyboard::modifyKeyboardBacklight(int keyCode, bool goingDown)
         DEBUG_LOG("ps2bl: OSNumber::withNumber failed\n");
         return;
     }
-    if (goingDown && kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPISetMethod, NULL, (OSObject**)&num, 1))
+    if (goingDown && kIOReturnSuccess != _backlightService->evaluateObject(_backlightACPISetMethod->getCStringNoCopy(), NULL, (OSObject**)&num, 1))
     {
         DEBUG_LOG("ps2bl: KKCM returned error\n");
     }

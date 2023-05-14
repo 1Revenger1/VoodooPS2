@@ -107,10 +107,10 @@ private:
     UInt32                      _maxsleeppresstime;
 
     // ACPI support for keyboard backlight
-    char *                _backlightACPIPath {nullptr};
-    char *                _backlightACPIGetMethod {nullptr};
-    char *                _backlightACPISetMethod {nullptr};
-    char *                _backlightACPIQueryLevelsMethod {nullptr};
+    OSString *                  _backlightACPIPath {nullptr};
+    OSString *                  _backlightACPIGetMethod {nullptr};
+    OSString *                  _backlightACPISetMethod {nullptr};
+    OSString *                  _backlightACPIQueryLevelsMethod {nullptr};
     IOACPIPlatformDevice *      _backlightService {nullptr};
     int *                       _backlightLevels {nullptr};
     int                         _backlightCount {0};
