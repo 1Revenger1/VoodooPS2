@@ -42,7 +42,7 @@ DefinitionBlock ("", "SSDT", 2, "ACDT", "Chrome", 0)
                 "Get Keyboard Backlight Level", "KBQC",
                 "Set Keyboard Backlight Level", "KBCM",
                 
-                "Custom ADB Map", Package()
+                "Custom PS2 Map", Package()
                 {
                     Package(){},
                     "3b=e010",  // F1 to Previous Track
