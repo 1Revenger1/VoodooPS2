@@ -25,7 +25,7 @@
 		<key>ALPS GlidePoint</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>as.acidanthera.voodoo.driver.PS2Trackpad</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>IOClass</key>
 			<string>ApplePS2ALPSGlidePoint</string>
 			<key>IOProbeScore</key>
@@ -149,7 +149,7 @@
 			<key>IOClass</key>
 			<string>ApplePS2Elan</string>
 			<key>CFBundleIdentifier</key>
-			<string>as.acidanthera.voodoo.driver.PS2Trackpad</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>Platform Profile</key>
 			<dict>
 				<key>Default</key>
@@ -228,7 +228,7 @@
 		<key>Sentelic FSP</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>as.acidanthera.voodoo.driver.PS2Trackpad</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>IOClass</key>
 			<string>ApplePS2SentelicFSP</string>
 			<key>IOProbeScore</key>
@@ -291,7 +291,7 @@
 		<key>Synaptics TouchPad</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>as.acidanthera.voodoo.driver.PS2Trackpad</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>IOClass</key>
 			<string>ApplePS2SynapticsTouchPad</string>
 			<key>IOProbeScore</key>

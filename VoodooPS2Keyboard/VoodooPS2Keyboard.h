@@ -87,8 +87,8 @@ private:
 
     // for keyboard remapping
     UInt16                      _PS2modifierState;
-    UInt16                      _PS2ToPS2Map[KBV_NUM_SCANCODES];
-    UInt16                      _PS2flags[KBV_NUM_SCANCODES];
+    UInt16                      _PS2ToPS2Map[KBV_NUM_SCANCODES*2];
+    UInt16                      _PS2flags[KBV_NUM_SCANCODES*2];
     VoodooPS2HidElement         _PS2ToHIDMap[512];
     bool                        _swapcommandoption;
     UInt32                      _f12ejectdelay;
