@@ -74,7 +74,7 @@
 		<string>9.0.0</string>
 		<key>com.apple.kpi.mach</key>
 		<string>9.0.0</string>
-		<key>as.acidanthera.voodoo.driver.PS2Controller</key>
+		<key>com.1revenger1.PS2Controller</key>
 		<string>${MODULE_VERSION}</string>
 	</dict>
 	<key>OSBundleRequired</key>
