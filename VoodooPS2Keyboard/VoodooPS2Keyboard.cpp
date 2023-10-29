@@ -1144,7 +1144,7 @@ void ApplePS2Keyboard::initKeyboard()
     
     // look for any keys that are down (just in case the reset happened with keys down)
     // for each key that is down, dispatch a key up for it
-    UInt8 packet[kPacketLength];
+    UInt8 packet[kPacketLength] = {};
     for (int scanCode = 0; scanCode < KBV_NUM_KEYCODES; scanCode++)
     {
         if (KBV_IS_KEYDOWN(scanCode))
