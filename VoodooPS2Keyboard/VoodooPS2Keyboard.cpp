@@ -309,7 +309,7 @@ bool ApplePS2Keyboard::start(IOService * provider)
         !_hidWrapper->attach(this) ||
         !_hidWrapper->start(this)) {
         IOLog("%s: HID Wrapper fail :(", getName());
-        return nullptr;
+        return false;
     }
     
     //
