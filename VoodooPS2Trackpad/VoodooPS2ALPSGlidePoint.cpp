@@ -845,10 +845,10 @@ int ApplePS2ALPSGlidePoint::alps_process_bitmap(struct alps_data *priv,
 
     for (int i = 0; ymap != 0; i++, ymap >>= 1) {
         unsigned int xmap = fields->x_map;
-        char bitLog[160];
+        char bitLog[161];
 
         for (int j = 0; xmap != 0; j++, xmap >>= 1) {
-            strlcat(bitLog, (ymap & 1 && xmap & 1) ? "1 " : "0 ", sizeof(bitLog) + 1);
+            strlcat(bitLog, (ymap & 1 && xmap & 1) ? "1 " : "0 ", sizeof(bitLog));
         }
 
         IOLog("%s: %s\n", getName(), bitLog);
