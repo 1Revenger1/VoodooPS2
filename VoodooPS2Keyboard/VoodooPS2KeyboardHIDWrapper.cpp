@@ -74,6 +74,7 @@ bool VoodooPS2KeyboardHIDWrapper::handleOpen(IOService *forClient, IOOptionBits 
     VoodooPS2KeyboardHIDEventDriver *temp = OSDynamicCast(VoodooPS2KeyboardHIDEventDriver, forClient);
     if (eventDriver == nullptr && temp != nullptr && IOHIDDevice::handleOpen(forClient, options, arg)) {
         eventDriver = temp;
+        eventDriver->retain();
         return true;
     }
     
@@ -82,7 +83,7 @@ bool VoodooPS2KeyboardHIDWrapper::handleOpen(IOService *forClient, IOOptionBits 
 
 void VoodooPS2KeyboardHIDWrapper::handleClose(IOService *forClient, IOOptionBits options) {
     if (forClient == eventDriver) {
-        eventDriver = nullptr;
+        OSSafeReleaseNULL(eventDriver);
     }
     
     IOHIDDevice::handleClose(forClient, options);
